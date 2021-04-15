@@ -73,7 +73,7 @@ def web_scraping_bot(urls): #防止爬蟲被擋
     return hk_reponsive
 
 def save_to_csv(responsive, file): #存檔excel的csv
-    with open(file, "w+" , newline="" , encoding="utf-16") as fp: #newline不要加換行
+    with open(file, "w+" , newline="" , encoding="utf-16") as fp: #newline不要加換行 utf-8為亂碼
         writer = csv.writer(fp)
         for word in responsive:
             writer.writerow(word)
@@ -81,6 +81,6 @@ def save_to_csv(responsive, file): #存檔excel的csv
 if __name__ == "__main__":
     urlx = generate_urls(100 , 108)
     hk_reponsive = web_scraping_bot(urlx)
-    for item in hk_reponsive: #可有可無
+    for item in hk_reponsive: 
         print(item)
     save_to_csv(hk_reponsive,"homeworkreponsive_100.csv")
