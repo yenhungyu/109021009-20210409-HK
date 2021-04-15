@@ -2,18 +2,41 @@ import requests
 import time
 import csv
 from bs4 import BeautifulSoup
-URL ="https://csie.asia.edu.tw/project/semester-{0:03d}.html" #將數列部分改為字串的概念去做列表就不會有010的狀況出現
+from requests import urllib3
 
-def generate_urls(url, start_page , end_page): #網頁
+def generate_urls(start_page, end_page):
     urls = []
-    for page in range(start_page , end_page):
-        urls.append(url.format(page))
-    return urls #收集urls
+    domain = "https://csie.asia.edu.tw{0}"
+    urllib3.disable_warnings()
+    # 取得該網址回應參數
+    r = requests.get(domain.format("/project"), verify = False)
+
+    if r.status_code == requests.codes.ok:
+        # 解析資料
+        soup = parse_html(r.text)
+
+        # 要爬蟲的頁面數
+        for year in range(start_page, end_page + 1):
+            
+            # 從soup(已解析資料)中找到每個class_為"nav-pills"數據下所有的"li"標籤內容 存入item
+            for item in soup.find(class_ = "nav-pills").find_all("li"):
+                # 從item中超連結函式(.a)下的.get函式取得其參數下內容 並儲存為urlf變數
+                # PS.從原始碼中可以得知 我們要的網址內容存在a下的href中
+                url = item.a.get("href")
+
+                if url.find(str(year)) > -1:
+                    urls.append(domain.format(url))
+                    break
+
+    else:
+        print("Error!!")
+
+    return urls
 
 def get_resource(url):   #假真人爬蟲防止被拒絕爬蟲
     headers = {   #headers假來源
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ApplWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36"}
-    return requests.get(url , headers = headers)
+    return requests.get(url , headers = headers, verify = False) #verify憑證要求
 
 def parse_html(html_str):   #解析html變lxml
     return BeautifulSoup(html_str, "lxml")
@@ -21,18 +44,16 @@ def parse_html(html_str):   #解析html變lxml
 def get_responsive(soup , file):  #爬蟲開始
     responsive = []
     count = 0
-    for table in soup.find_all(class_="nav-pills").find_all("li"):
-        url=table.a.get("href")    #抓href的資料
+    for responsive_table in soup.find_all("div", class_="table-responsive"):
+        rowData = [] 
+    
+        for tr in responsive_table.find_all("tr"): #抓responsive裡tr的資料
+            for cell in tr.find_all("td"):
+                rowData.append(cell.text.replace('\t', '').replace('\n', ''))
+                rowData.append("\t")
         count += 1
-        for responsive_table in soup.find_all(class_="table-responsive"):
-        
-            for tr in responsive_table.find_all("tr"): #抓responsive裡tr的資料
-                for cell in tr.fin_all("td"):
-                    for cell in tr.find_all('th'):
-                        new_word = []
-                        new_word.append(file)
-                        new_word.append(str(count))#收集每個資料
-                        words.append(new_word)             
+    
+    responsive.append(rowData)
     return responsive #統一丟入words的list裡
 
 def web_scraping_bot(urls): #防止爬蟲被擋
@@ -46,19 +67,19 @@ def web_scraping_bot(urls): #防止爬蟲被擋
             responsive = get_responsive(soup,file)
             hk_reponsive = hk_reponsive + responsive
             print("wait 3 second")
-            time.sleep(3) #先睡個幾秒再繼續抓   
+            time.sleep(0.5) #先睡個幾秒再繼續抓   
         else:
             print("HTTP request error")
     return hk_reponsive
 
 def save_to_csv(responsive, file): #存檔excel的csv
-    with open(file, "w+" , newline="" , encoding="utf-8") as fp: #newline不要加換行
+    with open(file, "w+" , newline="" , encoding="utf-16") as fp: #newline不要加換行
         writer = csv.writer(fp)
         for word in responsive:
             writer.writerow(word)
 
 if __name__ == "__main__":
-    urlx = generate_urls(URL , 100 , 109)
+    urlx = generate_urls(100 , 108)
     hk_reponsive = web_scraping_bot(urlx)
     for item in hk_reponsive: #可有可無
         print(item)
